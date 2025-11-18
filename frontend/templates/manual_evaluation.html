@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Manual Evaluation - Answer Sheet Evaluation System{% endblock %}
+
+{% block content %}
+<div class="manual-eval-container">
+    <h1>✏️ Manual Evaluation</h1>
+    <p class="description">Override automatic scores with manual evaluation</p>
+    
+    <div class="manual-form">
+        <div class="form-section">
+            <h2>Evaluation Form</h2>
+            
+            <div class="form-group">
+                <label>Exam ID:</label>
+                <input type="text" id="exam_id" value="{{ exam_id }}" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label>Student ID:</label>
+                <input type="text" id="student_id" value="{{ student_id }}" readonly>
+            </div>
+            
+            <div id="manualMarksSection">
+                <h3>Question Marks</h3>
+                <div id="marksFields"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="notes">Evaluation Notes:</label>
+                <textarea id="notes" placeholder="Add any notes about this evaluation..." rows="5"></textarea>
+            </div>
+            
+            <div class="action-buttons">
+                <button onclick="saveEvaluation()" class="btn btn-primary">Save Evaluation</button>
+                <button onclick="location.reload()" class="btn btn-secondary">Cancel</button>
+            </div>
+            
+            <div id="saveStatus"></div>
+        </div>
+        
+        <div class="info-section">
+            <h3>ℹ️ Automatic Evaluation</h3>
+            <div id="autoEvalInfo"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .manual-eval-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .description {
+        color: #666;
+        margin-bottom: 30px;
+    }
+    
+    .manual-form {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 30px;
+    }
+    
+    .form-section, .info-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .form-group input[readonly] {
+        background: #f5f5f5;
+        color: #666;
+    }
+    
+    .form-group input, .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1em;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+    
+    .form-group textarea {
+        resize: vertical;
+    }
+    
+    #manualMarksSection {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    
+    #marksFields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+    
+    .marks-field {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .marks-field label {
+        font-size: 0.9em;
+        margin-bottom: 5px;
+    }
+    
+    .marks-field input {
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+    
+    .action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .btn {
+        padding: 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+    }
+    
+    .btn-secondary:hover {
+        background: #e0e0e0;
+    }
+    
+    #saveStatus {
+        margin-top: 20px;
+    }
+    
+    .alert {
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    
+    .alert-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-left: 4px solid #43a047;
+    }
+    
+    .alert-error {
+        background: #ffebee;
+        color: #c62828;
+        border-left: 4px solid #ef5350;
+    }
+    
+    #autoEvalInfo {
+        background: #f5f5f5;
+        padding: 15px;
+        border-radius: 4px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .eval-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9em;
+    }
+    
+    .eval-item:last-child {
+        border-bottom: none;
+    }
+    
+    @media (max-width: 768px) {
+        .manual-form {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-buttons {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+async function loadAutoEvaluation() {
+    const examId = document.getElementById('exam_id').value;
+    const studentId = document.getElementById('student_id').value;
+    
+    console.log('Loading evaluation for:', { examId, studentId });
+    
+    if (!examId || !studentId) {
+        console.error('Missing exam_id or student_id');
+        return;
+    }
+    
+    try {
+        // Fetch automatic evaluation - this has the questions with marks
+        const evalResp = await fetch('/api/get-evaluation/' + encodeURIComponent(examId) + '/' + encodeURIComponent(studentId));
+        const evalData = await evalResp.json();
+        
+        if (evalData.success && evalData.data) {
+            const evaluation = evalData.data;
+            const questions = evaluation.per_question || [];
+            
+            // Create input fields for each question from the evaluation
+            let marksHtml = '';
+            questions.forEach(q => {
+                const qNum = q.question_number;
+                const maxMarks = q.max_marks;
+                marksHtml += '<div class="marks-field">';
+                marksHtml += '<label>Q' + qNum + ' (Max: ' + maxMarks + ')</label>';
+                marksHtml += '<input type="number" id="marks_q' + qNum + '" min="0" max="' + maxMarks + '" placeholder="0" step="0.5" value="' + q.scored_marks + '">';
+                marksHtml += '</div>';
+            });
+            
+            document.getElementById('marksFields').innerHTML = marksHtml;
+            
+            // Display automatic evaluation info
+            let infoHtml = '<div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-bottom: 15px; border-left: 4px solid #ffc107;">';
+            infoHtml += '<h4 style="margin: 0 0 10px 0; color: #856404;">Overall Score (Automatic)</h4>';
+            infoHtml += '<div style="font-size: 1.5em; font-weight: bold; color: #333;">';
+            infoHtml += evaluation.overall.total_scored + ' / ' + evaluation.overall.total_max;
+            infoHtml += ' <span style="font-size: 0.8em; color: #666; margin-left: 10px;">(' + evaluation.overall.percentage + '%)</span>';
+            infoHtml += '</div></div>';
+            infoHtml += '<h4 style="margin: 20px 0 10px 0; color: #333;">Question-wise Breakdown:</h4>';
+            infoHtml += '<div style="display: grid; grid-template-columns: 1fr; gap: 10px;">';
+            
+            questions.forEach(q => {
+                const percentage = q.max_marks > 0 ? (q.scored_marks / q.max_marks * 100).toFixed(0) : 0;
+                const confidencePercent = (q.ocr_confidence * 100).toFixed(0);
+                const similarityPercent = (q.similarity * 100).toFixed(0);
+                
+                infoHtml += '<div style="background: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 3px solid #667eea;">';
+                infoHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">';
+                infoHtml += '<strong>Q' + q.question_number + '</strong>';
+                infoHtml += '<span style="font-size: 1.1em; font-weight: bold; color: #667eea;">';
+                infoHtml += q.scored_marks + '/' + q.max_marks + '</span></div>';
+                infoHtml += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 0.85em;">';
+                infoHtml += '<div><span style="color: #666;">Score %:</span><strong style="display: block; color: #333;">' + percentage + '%</strong></div>';
+                infoHtml += '<div><span style="color: #666;">OCR Confidence:</span><strong style="display: block; color: #333;">' + confidencePercent + '%</strong></div>';
+                infoHtml += '<div><span style="color: #666;">Similarity:</span><strong style="display: block; color: #333;">' + similarityPercent + '%</strong></div>';
+                infoHtml += '</div>';
+                infoHtml += '</div>';
+            });
+            
+            infoHtml += '</div>';
+            document.getElementById('autoEvalInfo').innerHTML = infoHtml;
+            
+        } else {
+            const errorMsg = evalData.message || 'Unknown error';
+            document.getElementById('marksFields').innerHTML = '<div style="color: #c62828;">Note: ' + errorMsg + '</div>';
+            document.getElementById('autoEvalInfo').innerHTML = '<div style="color: #c62828;">' + errorMsg + '</div>';
+        }
+    } catch (e) {
+        console.error('Error loading evaluation:', e);
+        document.getElementById('marksFields').innerHTML = '<div style="color: #c62828;">Error: ' + e.message + '</div>';
+    }
+}
+
+async function saveEvaluation() {
+    const examId = document.getElementById('exam_id').value;
+    const studentId = document.getElementById('student_id').value;
+    const notes = document.getElementById('notes').value;
+    const statusDiv = document.getElementById('saveStatus');
+    
+    // Collect manual marks
+    const manualMarks = {};
+    const marksFields = document.querySelectorAll('.marks-field input');
+    marksFields.forEach(field => {
+        const qNum = field.id.replace('marks_q', '');
+        const value = parseFloat(field.value) || 0;
+        manualMarks[`q${qNum}`] = value;
+    });
+    
+    try {
+        const response = await fetch('{{ url_for("manual_evaluation") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                exam_id: examId,
+                student_id: studentId,
+                manual_marks: manualMarks,
+                notes: notes
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            statusDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>✅ Success!</strong> Manual evaluation saved and results updated.
+                </div>
+            `;
+            setTimeout(() => {
+                window.location.href = '{{ url_for("results", exam_id="") }}' + examId + '&student_id=' + studentId;
+            }, 1500);
+        } else {
+            statusDiv.innerHTML = `<div class="alert alert-error"><strong>❌ Error:</strong> ${result.message}</div>`;
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="alert alert-error"><strong>❌ Error:</strong> ${error.message}</div>`;
+    }
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadAutoEvaluation);
+</script>
+{% endblock %}

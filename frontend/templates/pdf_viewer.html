@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}PDF Viewer & OCR Text - Answer Sheet Evaluation System{% endblock %}
+
+{% block content %}
+<div class="pdf-viewer-container">
+    <h1>📄 PDF Viewer & OCR Text Display</h1>
+    
+    <div class="viewer-controls">
+        <div class="control-group">
+            <label>Exam ID:</label>
+            <input type="text" id="exam_id" value="{{ exam_id }}" placeholder="Enter exam ID">
+        </div>
+        
+        <div class="control-group">
+            <label>Student ID:</label>
+            <input type="text" id="student_id" value="{{ student_id }}" placeholder="Enter student ID">
+        </div>
+        
+        <button onclick="loadOCRData()" class="btn btn-primary">Load OCR Data</button>
+    </div>
+    
+    <div class="viewer-content">
+        <div class="page-selector">
+            <h3>📄 Pages</h3>
+            <div id="pageList"></div>
+        </div>
+        
+        <div class="page-viewer">
+            <div class="page-header">
+                <h3 id="pageTitle">Select a page</h3>
+                <div class="page-meta">
+                    <span id="pageNumber"></span>
+                    <span id="pageConfidence"></span>
+                </div>
+            </div>
+            
+            <div id="pdfContainer" style="display: none;">
+                <iframe id="pdfFrame" style="width: 100%; height: 500px; border: 1px solid #ddd; border-radius: 4px;"></iframe>
+            </div>
+            
+            <div class="ocr-text-display">
+                <div id="ocrText" class="text-content">
+                    <p style="color: #999;">Select a page to view OCR extracted text</p>
+                </div>
+            </div>
+            
+            <div class="text-controls">
+                <button onclick="increaseFontSize()" class="btn btn-sm">🔍+ Zoom In</button>
+                <button onclick="decreaseFontSize()" class="btn btn-sm">🔍- Zoom Out</button>
+                <button onclick="downloadText()" class="btn btn-sm">⬇️ Download</button>
+                <button onclick="copyText()" class="btn btn-sm">📋 Copy</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pdf-viewer-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .viewer-controls {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+        gap: 15px;
+        align-items: end;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .control-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .control-group label {
+        font-weight: 500;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    
+    .control-group input {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 200px;
+    }
+    
+    .viewer-content {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 20px;
+    }
+    
+    .page-selector {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        height: fit-content;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .page-selector h3 {
+        margin-top: 0;
+        color: #333;
+    }
+    
+    #pageList {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .page-item {
+        background: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+        border-left: 3px solid transparent;
+    }
+    
+    .page-item:hover {
+        background: #eee;
+    }
+    
+    .page-item.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-left-color: white;
+    }
+    
+    .page-item-number {
+        font-weight: bold;
+        display: block;
+    }
+    
+    .page-item-meta {
+        font-size: 0.8em;
+        margin-top: 5px;
+        opacity: 0.7;
+    }
+    
+    .page-viewer {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .page-header {
+        border-bottom: 2px solid #eee;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .page-header h3 {
+        margin: 0 0 10px 0;
+        color: #333;
+    }
+    
+    .page-meta {
+        display: flex;
+        gap: 20px;
+        font-size: 0.9em;
+        color: #666;
+    }
+    
+    .ocr-text-display {
+        flex: 1;
+        background: #fafafa;
+        padding: 20px;
+        border-radius: 4px;
+        border: 1px solid #eee;
+        margin-bottom: 15px;
+        overflow-y: auto;
+        max-height: 500px;
+    }
+    
+    .text-content {
+        font-family: 'Georgia', serif;
+        line-height: 1.8;
+        color: #333;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .text-controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 0.9em;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-sm {
+        background: #f0f0f0;
+        color: #333;
+        padding: 6px 12px;
+    }
+    
+    .btn-sm:hover {
+        background: #e0e0e0;
+    }
+    
+    @media (max-width: 768px) {
+        .viewer-controls {
+            grid-template-columns: 1fr;
+        }
+        
+        .viewer-content {
+            grid-template-columns: 1fr;
+        }
+        
+        .page-selector {
+            max-height: 300px;
+        }
+    }
+</style>
+
+<script>
+let currentFontSize = 16;
+let pagesData = [];
+let pdfPath = null;
+
+async function loadOCRData() {
+    const examId = document.getElementById('exam_id').value;
+    const studentId = document.getElementById('student_id').value;
+    
+    if (!examId || !studentId) {
+        alert('Please enter both Exam ID and Student ID');
+        return;
+    }
+    
+    try {
+        // First, load the PDF
+        const pdfResponse = await fetch(`{{ url_for('get_pdf_path', exam_id='', student_id='') }}${examId}/${studentId}`);
+        const pdfResult = await pdfResponse.json();
+        
+        if (pdfResult.success && pdfResult.pdf_path) {
+            pdfPath = pdfResult.pdf_path;
+            document.getElementById('pdfFrame').src = pdfPath;
+            document.getElementById('pdfContainer').style.display = 'block';
+        }
+        
+        // Then load OCR data
+        const response = await fetch(`{{ url_for('get_ocr_data', exam_id='', student_id='') }}${examId}/${studentId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            pagesData = result.data;
+            displayPageList();
+        } else {
+            alert('No OCR data found for this exam and student');
+        }
+    } catch (error) {
+        alert('Error loading data: ' + error.message);
+    }
+}
+
+function displayPageList() {
+    const pageList = document.getElementById('pageList');
+    pageList.innerHTML = '';
+    
+    pagesData.forEach((page, index) => {
+        const pageItem = document.createElement('div');
+        pageItem.className = 'page-item';
+        pageItem.onclick = () => selectPage(index);
+        
+        pageItem.innerHTML = `
+            <span class="page-item-number">Page ${page.page_number}</span>
+            <span class="page-item-meta">Q${page.question_number}</span>
+            <span class="page-item-meta">Conf: ${(page.confidence * 100).toFixed(0)}%</span>
+        `;
+        
+        pageList.appendChild(pageItem);
+    });
+    
+    if (pagesData.length > 0) {
+        selectPage(0);
+    }
+}
+
+function selectPage(index) {
+    const pageItems = document.querySelectorAll('.page-item');
+    pageItems.forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+    });
+    
+    const page = pagesData[index];
+    document.getElementById('pageTitle').textContent = `Page ${page.page_number}`;
+    document.getElementById('pageNumber').textContent = `Question ${page.question_number}`;
+    document.getElementById('pageConfidence').textContent = `Confidence: ${(page.confidence * 100).toFixed(0)}%`;
+    
+    const textContent = document.getElementById('ocrText');
+    textContent.textContent = page.text;
+    textContent.style.fontSize = currentFontSize + 'px';
+}
+
+function increaseFontSize() {
+    currentFontSize += 2;
+    document.getElementById('ocrText').style.fontSize = currentFontSize + 'px';
+}
+
+function decreaseFontSize() {
+    if (currentFontSize > 10) {
+        currentFontSize -= 2;
+        document.getElementById('ocrText').style.fontSize = currentFontSize + 'px';
+    }
+}
+
+function downloadText() {
+    const textContent = document.getElementById('ocrText').textContent;
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(textContent));
+    element.setAttribute('download', 'ocr_text.txt');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
+
+function copyText() {
+    const textContent = document.getElementById('ocrText').textContent;
+    navigator.clipboard.writeText(textContent).then(() => {
+        alert('Text copied to clipboard!');
+    });
+}
+
+// Load initial data if IDs provided
+if (document.getElementById('exam_id').value && document.getElementById('student_id').value) {
+    loadOCRData();
+}
+</script>
+{% endblock %}

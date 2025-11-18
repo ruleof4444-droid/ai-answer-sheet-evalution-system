@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Script - Answer Sheet Evaluation System{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <div class="upload-form-wrapper">
+        <h1>📝 Upload Answer Script</h1>
+        <p class="description">Upload student answer scripts (PDFs) to extract answers via OCR.</p>
+        
+        <form id="scriptForm" enctype="multipart/form-data" method="POST">
+            <div class="form-group">
+                <label for="exam_select">Select Subject/Exam:</label>
+                <select id="exam_select" name="exam_select">
+                    <option value="">-- Choose an exam --</option>
+                </select>
+                <small>Select from existing exams or create a new one in <a href="{{ url_for('manage_exams') }}">Manage Exams</a></small>
+            </div>
+            
+            <div class="form-group">
+                <label for="exam_id">Or Enter Exam ID Manually:</label>
+                <input type="text" id="exam_id" name="exam_id" placeholder="Enter exam ID">
+                <small>Use the Exam ID from schema upload</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="student_id">Student ID:</label>
+                <input type="text" id="student_id" name="student_id" required placeholder="Enter or generate student ID">
+                <small>Unique identifier for the student</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="file">Select PDF File:</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="file" name="file" accept=".pdf" required>
+                    <span class="file-input-label">Choose PDF file...</span>
+                </div>
+                <small>Maximum file size: 100MB</small>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" id="submitBtn">Upload Script</button>
+        </form>
+        
+        <div id="uploadStatus"></div>
+    </div>
+    
+    <div class="info-box">
+        <h3>ℹ️ Instructions</h3>
+        <ul>
+            <li>Use the Exam ID from the marking scheme upload</li>
+            <li>Enter a unique Student ID</li>
+            <li>Upload the student's answer script PDF</li>
+            <li>System will extract text using OCR</li>
+            <li>Extracted text is stored in database for evaluation</li>
+            <li>You can view extracted text in the PDF viewer</li>
+        </ul>
+        
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
+            <h4>💡 Next Steps</h4>
+            <ol>
+                <li>Upload multiple scripts for the same exam</li>
+                <li>Go to Evaluate section</li>
+                <li>Run evaluation to get scores</li>
+                <li>View and verify results</li>
+                <li>Use manual evaluation if needed</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<style>
+    .upload-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .upload-form-wrapper {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .description {
+        color: #666;
+        margin-bottom: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="file"],
+    .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1em;
+        box-sizing: border-box;
+    }
+    
+    .file-input-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    
+    .file-input-wrapper input[type="file"] {
+        width: 100%;
+        padding: 12px;
+        border: 2px dashed #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95em;
+        transition: all 0.3s;
+        background: #fafafa;
+    }
+    
+    .file-input-wrapper input[type="file"]:hover {
+        border-color: #667eea;
+        background: #f0f4ff;
+    }
+    
+    .file-input-wrapper input[type="file"]:focus {
+        outline: none;
+        border-color: #667eea;
+        background: #f0f4ff;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .file-input-label {
+        display: none;
+    }
+    
+    .form-group small {
+        display: block;
+        color: #999;
+        margin-top: 5px;
+        font-size: 0.9em;
+    }
+    
+    .form-group small a {
+        color: #667eea;
+        text-decoration: none;
+    }
+    
+    .form-group small a:hover {
+        text-decoration: underline;
+    }
+    
+    .btn-primary {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: all 0.3s;
+        pointer-events: all;
+        display: block;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+    
+    #uploadStatus {
+        margin-top: 20px;
+    }
+    
+    .info-box {
+        background: #f0f4ff;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .info-box h3, .info-box h4 {
+        margin-top: 0;
+        color: #333;
+    }
+    
+    .info-box ul, .info-box ol {
+        margin: 0;
+        padding-left: 20px;
+    }
+    
+    .info-box li {
+        margin: 8px 0;
+        color: #555;
+    }
+    
+    .alert {
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    
+    .alert-info {
+        background: #e3f2fd;
+        color: #1565c0;
+        border-left: 4px solid #1976d2;
+    }
+    
+    .alert-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-left: 4px solid #43a047;
+    }
+    
+    .alert-danger {
+        background: #ffebee;
+        color: #c62828;
+        border-left: 4px solid #ef5350;
+    }
+    
+    code {
+        background: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+    
+    @media (max-width: 768px) {
+        .upload-container {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+const scriptForm = document.getElementById('scriptForm');
+const submitBtn = document.getElementById('submitBtn');
+const examSelect = document.getElementById('exam_select');
+const examIdInput = document.getElementById('exam_id');
+
+// Load exams on page load
+async function loadExams() {
+    try {
+        const response = await fetch('{{ url_for("get_exams") }}');
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            result.data.forEach(exam => {
+                const option = document.createElement('option');
+                option.value = exam.exam_id;
+                option.textContent = exam.subject_name;
+                examSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading exams:', error);
+    }
+}
+
+// Load exams when page loads
+document.addEventListener('DOMContentLoaded', loadExams);
+
+// Handle exam selection
+examSelect.addEventListener('change', (e) => {
+    if (e.target.value) {
+        examIdInput.value = e.target.value;
+        examIdInput.style.backgroundColor = '#f0f8ff';
+    } else {
+        examIdInput.value = '';
+        examIdInput.style.backgroundColor = 'white';
+    }
+});
+
+// Log on page load
+console.log('Script upload script loaded');
+console.log('Form element:', scriptForm);
+console.log('Submit button:', submitBtn);
+
+if (!scriptForm) {
+    console.error('Script form not found!');
+}
+
+if (!submitBtn) {
+    console.error('Submit button not found!');
+}
+
+// Handle form submission
+scriptForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    console.log('Form submitted!');
+    
+    const examId = document.getElementById('exam_id').value.trim();
+    const studentId = document.getElementById('student_id').value.trim();
+    const fileInput = document.getElementById('file');
+    const statusDiv = document.getElementById('uploadStatus');
+    
+    console.log('Exam ID:', examId);
+    console.log('Student ID:', studentId);
+    console.log('File input:', fileInput);
+    console.log('Files selected:', fileInput.files.length);
+    
+    // Validate required fields
+    if (!examId) {
+        console.warn('Exam ID is required');
+        statusDiv.innerHTML = '<div class="alert alert-danger"><strong>❌ Error:</strong> Exam ID is required</div>';
+        return;
+    }
+    
+    if (!studentId) {
+        console.warn('Student ID is required');
+        statusDiv.innerHTML = '<div class="alert alert-danger"><strong>❌ Error:</strong> Student ID is required</div>';
+        return;
+    }
+    
+    // Validate file selection
+    if (!fileInput.files || fileInput.files.length === 0) {
+        console.warn('No file selected');
+        statusDiv.innerHTML = '<div class="alert alert-danger"><strong>❌ Error:</strong> Please select a PDF file</div>';
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    console.log('Selected file:', file.name, file.size, file.type);
+    
+    // Validate file type
+    if (!file.type.includes('pdf') && !file.name.endsWith('.pdf')) {
+        console.warn('Invalid file type');
+        statusDiv.innerHTML = '<div class="alert alert-danger"><strong>❌ Error:</strong> Please select a valid PDF file</div>';
+        return;
+    }
+    
+    // Validate file size (100MB)
+    if (file.size > 100 * 1024 * 1024) {
+        console.warn('File too large');
+        statusDiv.innerHTML = '<div class="alert alert-danger"><strong>❌ Error:</strong> File size exceeds 100MB limit</div>';
+        return;
+    }
+    
+    const formData = new FormData(scriptForm);
+    
+    statusDiv.innerHTML = '<div class="alert alert-info">⏳ Uploading and processing... This may take a few minutes.</div>';
+    
+    try {
+        console.log('Sending fetch request to upload endpoint');
+        const response = await fetch('{{ url_for("upload_script") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        console.log('Response status:', response.status);
+        const result = await response.json();
+        console.log('Response result:', result);
+        
+        if (result.success) {
+            const examIdResult = result.exam_id;
+            const studentIdResult = result.student_id;
+            statusDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>✅ Success!</strong> Script uploaded and OCR processed.
+                    <br><strong>File:</strong> ${result.file}
+                    <br><a href="{{ url_for('pdf_viewer') }}?exam_id=${examIdResult}&student_id=${studentIdResult}" class="btn btn-sm">View Extracted Text</a>
+                    <br><a href="{{ url_for('evaluate') }}" class="btn btn-sm">Proceed to Evaluation</a>
+                </div>
+            `;
+            scriptForm.reset();
+            fileInput.value = '';
+        } else {
+            console.error('Upload failed:', result.message);
+            statusDiv.innerHTML = `<div class="alert alert-danger"><strong>❌ Error:</strong> ${result.message || 'Unknown error occurred'}</div>`;
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        statusDiv.innerHTML = `<div class="alert alert-danger"><strong>❌ Error:</strong> ${error.message}</div>`;
+    }
+});
+
+// Update file input display when file is selected
+document.getElementById('file').addEventListener('change', (e) => {
+    console.log('File selected:', e.target.files.length > 0 ? e.target.files[0].name : 'none');
+    if (e.target.files.length > 0) {
+        e.target.title = e.target.files[0].name;
+    }
+});
+
+// Make button clickable
+submitBtn.addEventListener('click', (e) => {
+    console.log('Submit button clicked');
+});
+</script>
+{% endblock %}
