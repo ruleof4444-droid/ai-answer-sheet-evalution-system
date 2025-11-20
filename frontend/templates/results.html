@@ -57,7 +57,7 @@
                     <strong>{{ evaluation.per_question | selectattr('flags') | list | length }}</strong>
                 </div>
                 <div class="stat-card">
-                    <span>Gemini Suggestions</span>
+                    <span>AI Suggestions</span>
                     <strong>{{ evaluation.per_question | sum(attribute='gemini_marks') }}</strong>
                 </div>
             </div>
@@ -91,7 +91,7 @@
                                             <span class="status-pill danger">🚩 Flagged</span>
                                         {% endif %}
                                         {% if q.gemini_marks %}
-                                            <span class="status-pill info">🤖 Gemini: {{ q.gemini_marks }}</span>
+                                            <span class="status-pill info">🤖 Agent: {{ q.gemini_marks }}</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -136,7 +136,7 @@
                                     
                                     {% if q.verification %}
                                         <div class="verification-section">
-                                            <strong>Gemini Insight</strong>
+                                            <strong>AI Insight</strong>
                                             <p>{{ q.verification.reason }}</p>
                                         </div>
                                     {% endif %}

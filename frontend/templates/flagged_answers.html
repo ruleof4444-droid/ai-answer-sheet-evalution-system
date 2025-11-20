@@ -158,7 +158,7 @@ function displayFlaggedAnswers(items) {
                     <div class="detail-row">
                         <span class="detail-label">Marks:</span>
                         <span class="detail-value">${item.scored_marks}/${item.max_marks}</span>
-                        ${item.gemini_marks ? `<span class="detail-value gemini-mark">(Gemini: ${item.gemini_marks})</span>` : ''}
+                        ${item.gemini_marks ? `<span class="detail-value gemini-mark">(Agent: ${item.gemini_marks})</span>` : ''}
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Similarity:</span>
@@ -791,15 +791,60 @@ document.addEventListener('DOMContentLoaded', function() {
 @media (max-width: 768px) {
     .flagged-grid {
         grid-template-columns: 1fr;
+        gap: var(--spacing-md);
     }
     
     .filters-section {
         flex-direction: column;
         align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    
+    .filters-section select,
+    .filters-section input {
+        width: 100%;
+        font-size: 16px; /* Prevents zoom on iOS */
     }
     
     .stats-section {
         flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .stat-item {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .flagged-card {
+        padding: var(--spacing-md);
+    }
+    
+    .flagged-card h3 {
+        font-size: 1.1rem;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+    
+    .detail-label {
+        font-weight: 600;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-header h1 {
+        font-size: 1.75rem;
+    }
+    
+    .flagged-card {
+        padding: var(--spacing-sm);
+    }
+    
+    .detail-value {
+        font-size: 0.9rem;
     }
 }
 </style>

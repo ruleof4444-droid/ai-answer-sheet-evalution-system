@@ -17,6 +17,11 @@
             <div class="logo">
                 <h1>📋 Evaluation System</h1>
             </div>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <ul class="nav-links">
                 <li><a href="{{ url_for('dashboard') }}" class="{% if request.path == '/' %}active{% endif %}">🏠 Dashboard</a></li>
                 <li><a href="{{ url_for('manage_exams') }}" class="{% if 'manage_exams' in request.path %}active{% endif %}">📚 Exams</a></li>
