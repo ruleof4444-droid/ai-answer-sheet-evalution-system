@@ -46,10 +46,10 @@
             </div>
             
             <div class="text-controls">
-                <button onclick="increaseFontSize()" class="btn btn-sm">🔍+ Zoom In</button>
-                <button onclick="decreaseFontSize()" class="btn btn-sm">🔍- Zoom Out</button>
-                <button onclick="downloadText()" class="btn btn-sm">⬇️ Download</button>
-                <button onclick="copyText()" class="btn btn-sm">📋 Copy</button>
+                <button onclick="increaseFontSize()" class="btn btn-sm btn-secondary">🔍+ Zoom In</button>
+                <button onclick="decreaseFontSize()" class="btn btn-sm btn-secondary">🔍- Zoom Out</button>
+                <button onclick="downloadText()" class="btn btn-sm btn-secondary">⬇️ Download</button>
+                <button onclick="copyText()" class="btn btn-sm btn-secondary">📋 Copy</button>
             </div>
         </div>
     </div>
@@ -199,35 +199,6 @@
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-    }
-    
-    .btn {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.3s;
-        font-size: 0.9em;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-    
-    .btn-sm {
-        background: #f0f0f0;
-        color: #333;
-        padding: 6px 12px;
-    }
-    
-    .btn-sm:hover {
-        background: #e0e0e0;
     }
     
     @media (max-width: 768px) {

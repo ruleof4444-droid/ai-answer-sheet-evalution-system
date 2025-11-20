@@ -167,8 +167,8 @@
                                 <td class="text-center">{{ student.question_count }}</td>
                                 <td class="date">{{ student.generated_at }}</td>
                                 <td class="actions">
-                                    <a href="{{ url_for('results', exam_id=stats.exam_id, student_id=student.student_id) }}" class="btn btn-sm btn-view" title="View detailed results">View</a>
-                                    <button onclick="reEvaluateStudent('{{ stats.exam_id }}', '{{ student.student_id }}')" class="btn btn-sm btn-reevaluate" title="Re-evaluate to update scores">Re-evaluate</button>
+                                    <a href="{{ url_for('results', exam_id=stats.exam_id, student_id=student.student_id) }}" class="btn btn-sm btn-primary" title="View detailed results">View</a>
+                                    <button onclick="reEvaluateStudent('{{ stats.exam_id }}', '{{ student.student_id }}')" class="btn btn-sm btn-warning" title="Re-evaluate to update scores">Re-evaluate</button>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -403,42 +403,7 @@
         display: flex;
         gap: 10px;
         margin-bottom: 20px;
-    }
-    
-    .btn {
-        padding: 10px 16px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.95em;
-        transition: all 0.3s;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        font-weight: 500;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-    
-    .btn-primary:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-        transform: none;
-    }
-    
-    .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-        border: 1px solid #ddd;
-    }
-    
-    .btn-secondary:hover {
-        background: #e0e0e0;
+        flex-wrap: wrap;
     }
     
     .students-table {
@@ -607,24 +572,6 @@
     
     .actions {
         white-space: nowrap;
-    }
-    
-    .btn-view {
-        background: #667eea;
-        color: white;
-    }
-    
-    .btn-view:hover {
-        background: #764ba2;
-    }
-    
-    .btn-reevaluate {
-        background: #ff9800;
-        color: white;
-    }
-    
-    .btn-reevaluate:hover {
-        background: #f57c00;
     }
     
     #reEvaluateStatus {
