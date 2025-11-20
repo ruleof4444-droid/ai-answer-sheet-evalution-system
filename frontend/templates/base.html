@@ -3,23 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Professional Answer Sheet Evaluation System with AI-powered assessment">
     <title>{% block title %}Answer Sheet Evaluation System{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
             <div class="logo">
-                <h1>📋 Answer Sheet Evaluation</h1>
+                <h1>📋 Evaluation System</h1>
             </div>
             <ul class="nav-links">
-                <li><a href="{{ url_for('dashboard') }}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a></li>
-                <li><a href="{{ url_for('manage_exams') }}" class="{% if 'manage_exams' in request.path %}active{% endif %}">📚 Manage Exams</a></li>
-                <li><a href="{{ url_for('upload_schema') }}" class="{% if 'upload_schema' in request.path %}active{% endif %}">Upload Schema</a></li>
-                <li><a href="{{ url_for('upload_script') }}" class="{% if 'upload_script' in request.path %}active{% endif %}">Upload Script</a></li>
-                <li><a href="{{ url_for('evaluate') }}" class="{% if 'evaluate' in request.path %}active{% endif %}">Evaluate</a></li>
-                <li><a href="{{ url_for('results') }}" class="{% if 'results' in request.path %}active{% endif %}">Results</a></li>
+                <li><a href="{{ url_for('dashboard') }}" class="{% if request.path == '/' %}active{% endif %}">🏠 Dashboard</a></li>
+                <li><a href="{{ url_for('manage_exams') }}" class="{% if 'manage_exams' in request.path %}active{% endif %}">📚 Exams</a></li>
+                <li><a href="{{ url_for('upload_schema') }}" class="{% if 'upload_schema' in request.path %}active{% endif %}">📤 Schema</a></li>
+                <li><a href="{{ url_for('upload_script') }}" class="{% if 'upload_script' in request.path %}active{% endif %}">📝 Scripts</a></li>
+                <li><a href="{{ url_for('evaluate') }}" class="{% if 'evaluate' in request.path %}active{% endif %}">⚖️ Evaluate</a></li>
+                <li><a href="{{ url_for('results') }}" class="{% if 'results' in request.path and 'flagged' not in request.path %}active{% endif %}">📊 Results</a></li>
+                <li><a href="{{ url_for('flagged_answers') }}" class="{% if 'flagged' in request.path %}active{% endif %}">🚩 Flags</a></li>
             </ul>
         </div>
     </nav>
@@ -29,7 +34,7 @@
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="alert alert-{{ category }}">
-                        {{ message }}
+                        <span>{{ message }}</span>
                     </div>
                 {% endfor %}
             {% endif %}

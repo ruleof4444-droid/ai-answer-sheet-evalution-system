@@ -1,0 +1,807 @@
+{% extends "base.html" %}
+
+{% block title %}Flagged Answers - Answer Sheet Evaluation System{% endblock %}
+
+{% block content %}
+<div class="flagged-answers-container">
+    <div class="page-header">
+        <h1>🚩 Flagged Answers</h1>
+        <p class="subtitle">Review and manage flagged questions from all evaluations</p>
+    </div>
+    
+    <!-- Filters -->
+    <div class="filters-section">
+        <div class="filter-group">
+            <label for="filter_exam_id">Filter by Exam ID:</label>
+            <input type="text" id="filter_exam_id" placeholder="Enter Exam ID" />
+        </div>
+        <div class="filter-group">
+            <label for="filter_student_id">Filter by Student ID:</label>
+            <input type="text" id="filter_student_id" placeholder="Enter Student ID" />
+        </div>
+        <button class="btn btn-primary" onclick="loadFlaggedAnswers()">🔍 Search</button>
+        <button class="btn btn-secondary" onclick="clearFilters()">Clear</button>
+    </div>
+    
+    <!-- Stats -->
+    <div id="stats" class="stats-section" style="display: none;">
+        <div class="stat-card">
+            <div class="stat-value" id="total_flagged">0</div>
+            <div class="stat-label">Total Flagged</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="unique_exams">0</div>
+            <div class="stat-label">Unique Exams</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="unique_students">0</div>
+            <div class="stat-label">Unique Students</div>
+        </div>
+    </div>
+    
+    <!-- Loading -->
+    <div id="loading" class="loading-message" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading flagged answers...</p>
+    </div>
+    
+    <!-- Flagged Answers List -->
+    <div id="flagged-list" class="flagged-list">
+        <p class="empty-message">Click "Search" to load flagged answers or clear filters to see all.</p>
+    </div>
+</div>
+
+<!-- Remove Flag Modal -->
+<div id="removeFlagModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Remove Flag</h2>
+            <span class="close" onclick="closeRemoveFlagModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p><strong>Question:</strong> <span id="modal_question_number"></span></p>
+            <p><strong>Student:</strong> <span id="modal_student_id"></span></p>
+            <p><strong>Exam:</strong> <span id="modal_exam_id"></span></p>
+            
+            <div class="flags-section">
+                <label><strong>Select flags to remove:</strong></label>
+                <div id="modal_flags_list"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="remove_reason">Reason (optional):</label>
+                <textarea id="remove_reason" rows="3" placeholder="Enter reason for removing flag..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeRemoveFlagModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmRemoveFlag()">Remove Flag(s)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentFlaggedItems = [];
+let currentRemoveContext = null;
+
+function loadFlaggedAnswers() {
+    const examId = document.getElementById('filter_exam_id').value.trim();
+    const studentId = document.getElementById('filter_student_id').value.trim();
+    
+    const loadingDiv = document.getElementById('loading');
+    const flaggedList = document.getElementById('flagged-list');
+    
+    loadingDiv.style.display = 'block';
+    flaggedList.innerHTML = '';
+    
+    let url = '/api/flagged-answers';
+    const params = new URLSearchParams();
+    if (examId) params.append('exam_id', examId);
+    if (studentId) params.append('student_id', studentId);
+    if (params.toString()) url += '?' + params.toString();
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.style.display = 'none';
+            
+            if (data.success) {
+                currentFlaggedItems = data.data || [];
+                displayFlaggedAnswers(currentFlaggedItems);
+                updateStats(currentFlaggedItems);
+            } else {
+                flaggedList.innerHTML = `<div class="alert alert-danger">Error: ${data.message}</div>`;
+            }
+        })
+        .catch(error => {
+            loadingDiv.style.display = 'none';
+            flaggedList.innerHTML = `<div class="alert alert-danger">Error loading flagged answers: ${error.message}</div>`;
+            console.error('Error:', error);
+        });
+}
+
+function displayFlaggedAnswers(items) {
+    const flaggedList = document.getElementById('flagged-list');
+    
+    if (items.length === 0) {
+        flaggedList.innerHTML = '<div class="alert alert-info">No flagged answers found.</div>';
+        return;
+    }
+    
+    let html = '<div class="flagged-grid">';
+    
+    items.forEach((item, index) => {
+        const flagsHtml = item.flags.map(flag => {
+            // Handle flags that might contain "Reason: " prefix
+            const flagText = flag.startsWith('Reason:') ? flag : flag;
+            return `<span class="flag-badge">${escapeHtml(flagText)}</span>`;
+        }).join('');
+        
+        html += `
+            <div class="flagged-card">
+                <div class="flagged-header">
+                    <h3>Question ${item.question_number}</h3>
+                    <div class="flagged-meta">
+                        <span class="badge badge-warning">${item.flags.length} Flag(s)</span>
+                    </div>
+                </div>
+                
+                <div class="flagged-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Exam ID:</span>
+                        <span class="detail-value">${escapeHtml(item.exam_id.substring(0, 20))}...</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Student ID:</span>
+                        <span class="detail-value">${escapeHtml(item.student_id.substring(0, 20))}...</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Marks:</span>
+                        <span class="detail-value">${item.scored_marks}/${item.max_marks}</span>
+                        ${item.gemini_marks ? `<span class="detail-value gemini-mark">(Gemini: ${item.gemini_marks})</span>` : ''}
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Similarity:</span>
+                        <span class="detail-value">${(item.similarity * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">OCR Confidence:</span>
+                        <span class="detail-value">${(item.ocr_confidence * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Generated:</span>
+                        <span class="detail-value">${escapeHtml(item.generated_at)}</span>
+                    </div>
+                </div>
+                
+                <div class="flags-display">
+                    <strong>Flags:</strong>
+                    <div class="flags-list">${flagsHtml}</div>
+                </div>
+                
+                ${item.verification && item.verification.reason ? `
+                    <div class="verification-info">
+                        <strong>Verification:</strong>
+                        <p>${escapeHtml(item.verification.reason)}</p>
+                    </div>
+                ` : ''}
+                
+                <div class="flagged-actions">
+                    <a href="/results?exam_id=${encodeURIComponent(item.exam_id)}&student_id=${encodeURIComponent(item.student_id)}" 
+                       class="btn btn-sm btn-secondary" style="text-decoration: none;">View Full Results</a>
+                    <button type="button" class="btn btn-sm btn-primary" 
+                            onclick="openRemoveFlagModal(${index})"
+                            style="white-space: nowrap;">
+                        🚩 Remove Flag
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    flaggedList.innerHTML = html;
+}
+
+function updateStats(items) {
+    const statsSection = document.getElementById('stats');
+    const uniqueExams = new Set(items.map(i => i.exam_id));
+    const uniqueStudents = new Set(items.map(i => i.student_id));
+    
+    document.getElementById('total_flagged').textContent = items.length;
+    document.getElementById('unique_exams').textContent = uniqueExams.size;
+    document.getElementById('unique_students').textContent = uniqueStudents.size;
+    
+    statsSection.style.display = 'flex';
+}
+
+function openRemoveFlagModal(index) {
+    const item = currentFlaggedItems[index];
+    if (!item) return;
+    
+    currentRemoveContext = {
+        exam_id: item.exam_id,
+        student_id: item.student_id,
+        question_number: item.question_number,
+        flags: item.flags
+    };
+    
+    document.getElementById('modal_question_number').textContent = `Question ${item.question_number}`;
+    document.getElementById('modal_student_id').textContent = item.student_id.substring(0, 30);
+    document.getElementById('modal_exam_id').textContent = item.exam_id.substring(0, 30);
+    
+    // Create checkboxes for each flag
+    const flagsList = document.getElementById('modal_flags_list');
+    flagsList.innerHTML = '';
+    
+    item.flags.forEach((flag, flagIndex) => {
+        const checkbox = document.createElement('div');
+        checkbox.className = 'flag-checkbox';
+        checkbox.innerHTML = `
+            <label>
+                <input type="checkbox" value="${flagIndex}" checked>
+                <span>${escapeHtml(flag)}</span>
+            </label>
+        `;
+        flagsList.appendChild(checkbox);
+    });
+    
+    // Add "Remove All" option
+    const removeAllDiv = document.createElement('div');
+    removeAllDiv.className = 'flag-checkbox';
+    removeAllDiv.innerHTML = `
+        <label>
+            <input type="checkbox" id="remove_all_flags">
+            <span><strong>Remove All Flags</strong></span>
+        </label>
+    `;
+    flagsList.appendChild(removeAllDiv);
+    
+    document.getElementById('removeFlagModal').style.display = 'block';
+}
+
+function closeRemoveFlagModal() {
+    document.getElementById('removeFlagModal').style.display = 'none';
+    document.getElementById('remove_reason').value = '';
+    currentRemoveContext = null;
+}
+
+function confirmRemoveFlag() {
+    if (!currentRemoveContext) return;
+    
+    const removeAll = document.getElementById('remove_all_flags').checked;
+    const checkboxes = document.querySelectorAll('#modal_flags_list input[type="checkbox"]:not(#remove_all_flags)');
+    
+    let flagsToRemove = [];
+    
+    if (removeAll) {
+        flagsToRemove = currentRemoveContext.flags;
+    } else {
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                flagsToRemove.push(currentRemoveContext.flags[parseInt(cb.value)]);
+            }
+        });
+    }
+    
+    if (flagsToRemove.length === 0) {
+        alert('Please select at least one flag to remove.');
+        return;
+    }
+    
+    const reason = document.getElementById('remove_reason').value.trim();
+    
+    fetch('/api/remove-flag', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            exam_id: currentRemoveContext.exam_id,
+            student_id: currentRemoveContext.student_id,
+            question_number: currentRemoveContext.question_number,
+            flags_to_remove: flagsToRemove,
+            reason: reason || 'Manual removal by user'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeRemoveFlagModal();
+            loadFlaggedAnswers(); // Reload the list
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing flag: ' + error.message);
+    });
+}
+
+function clearFilters() {
+    document.getElementById('filter_exam_id').value = '';
+    document.getElementById('filter_student_id').value = '';
+    loadFlaggedAnswers();
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('removeFlagModal');
+    if (event.target == modal) {
+        closeRemoveFlagModal();
+    }
+}
+
+// Load all flagged answers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadFlaggedAnswers();
+});
+</script>
+
+<style>
+.flagged-answers-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.page-header h1 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.subtitle {
+    color: #666;
+    margin: 0;
+}
+
+.filters-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-group label {
+    font-weight: 500;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.filter-group input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.stats-section {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.loading-message {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.flagged-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.flagged-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #ff9800;
+}
+
+.flagged-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.flagged-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.flagged-details {
+    margin-bottom: 15px;
+}
+
+.detail-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #666;
+    min-width: 120px;
+}
+
+.detail-value {
+    color: #333;
+}
+
+.gemini-mark {
+    color: #667eea;
+    font-style: italic;
+}
+
+.flags-display {
+    background: #fff3e0;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    border-left: 3px solid #ff9800;
+}
+
+.flags-display strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #e65100;
+}
+
+.flags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.flag-badge {
+    background: #ff9800;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.verification-info {
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 0.9em;
+}
+
+.verification-info strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+}
+
+.flagged-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.flagged-actions .btn {
+    flex: 0 0 auto;
+    min-width: fit-content;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+    font-size: 1em;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 0.9em;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+}
+
+.modal-content {
+    background-color: white;
+    margin: 2% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    background: white;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: calc(90vh - 160px);
+}
+
+.modal-body p {
+    margin: 10px 0;
+}
+
+.modal-body .flags-section {
+    margin: 20px 0;
+    background: #f9f9f9;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.flag-checkbox {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.flag-checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.form-group {
+    margin: 20px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.95em;
+    resize: vertical;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+    background: white;
+}
+
+/* Ensure modal body scrolls smoothly */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Also make flags section scrollable if content is too long */
+.modal-body .flags-section::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body .flags-section::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.modal-body .flags-section::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.modal-body .flags-section::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    color: #1976d2;
+    border-left: 4px solid #1976d2;
+}
+
+.alert-danger {
+    background: #ffebee;
+    color: #c62828;
+    border-left: 4px solid #c62828;
+}
+
+@media (max-width: 768px) {
+    .flagged-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .stats-section {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+

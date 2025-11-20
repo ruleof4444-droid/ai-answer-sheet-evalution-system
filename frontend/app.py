@@ -994,6 +994,157 @@ def get_ocr_text(exam_id, student_id):
         logger.error(f"Error fetching OCR text: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+# ============================================================================
+# FLAGGED ANSWERS ROUTES
+# ============================================================================
+
+@app.route('/flagged-answers', methods=['GET'])
+def flagged_answers():
+    """Display page with all flagged answers."""
+    return render_template('flagged_answers.html')
+
+@app.route('/api/flagged-answers', methods=['GET'])
+def get_flagged_answers():
+    """Get all flagged questions from all evaluations."""
+    try:
+        exam_id = request.args.get('exam_id', None)
+        student_id = request.args.get('student_id', None)
+        
+        # Build query
+        query = {}
+        if exam_id:
+            query['examId'] = exam_id
+        if student_id:
+            query['studentId'] = student_id
+        
+        # Get all results
+        all_results = list(col_results.find(query).sort('_id', -1))
+        
+        flagged_items = []
+        for result in all_results:
+            exam_id_val = result.get('examId', '')
+            student_id_val = result.get('studentId', '')
+            result_id = str(result['_id'])
+            
+            for question in result.get('perQuestion', []):
+                flags = question.get('flags', [])
+                if flags:  # Only include questions with flags
+                    flagged_items.append({
+                        'result_id': result_id,
+                        'exam_id': exam_id_val,
+                        'student_id': student_id_val,
+                        'question_number': question.get('questionNumber'),
+                        'max_marks': question.get('maxMarks', 0),
+                        'scored_marks': question.get('scoredMarks', 0),
+                        'gemini_marks': question.get('gemini_marks', 0),
+                        'similarity': question.get('similarity', 0),
+                        'ocr_confidence': question.get('ocrConfidenceAvg', 0),
+                        'flags': flags,
+                        'verification': question.get('verification', {}),
+                        'generated_at': result.get('generatedAt', datetime.utcnow()).strftime('%Y-%m-%d %H:%M:%S')
+                    })
+        
+        return jsonify({
+            'success': True,
+            'data': flagged_items,
+            'count': len(flagged_items)
+        })
+    except Exception as e:
+        logger.error(f"Error fetching flagged answers: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/remove-flag', methods=['POST'])
+def remove_flag():
+    """Intelligently remove a flag from a question."""
+    try:
+        data = request.json
+        exam_id = data.get('exam_id')
+        student_id = data.get('student_id')
+        question_number = data.get('question_number')
+        flags_to_remove = data.get('flags_to_remove', [])  # List of specific flags to remove
+        
+        if not exam_id or not student_id or not question_number:
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        
+        # Get the current result
+        result = col_results.find_one({
+            'examId': exam_id,
+            'studentId': student_id
+        }, sort=[('_id', -1)])
+        
+        if not result:
+            return jsonify({'success': False, 'message': 'Result not found'}), 404
+        
+        # Find the question and check if flags still apply
+        updated_per_question = []
+        flag_removed = False
+        removed_flags = []
+        remaining_flags = []
+        
+        for question in result.get('perQuestion', []):
+            if question.get('questionNumber') == question_number:
+                current_flags = question.get('flags', [])
+                
+                if flags_to_remove:
+                    # Remove specific flags
+                    remaining_flags = [f for f in current_flags if f not in flags_to_remove]
+                    removed_flags = [f for f in current_flags if f in flags_to_remove]
+                else:
+                    # Remove all flags (if user confirms)
+                    remaining_flags = []
+                    removed_flags = current_flags.copy()
+                
+                # Intelligent flag removal: Check if conditions still warrant flags
+                if remaining_flags != current_flags:
+                    # Store removed flags in a new field for audit trail
+                    question['flags'] = remaining_flags
+                    question['flagsHistory'] = question.get('flagsHistory', [])
+                    question['flagsHistory'].append({
+                        'removed_flags': removed_flags,
+                        'removed_at': datetime.utcnow(),
+                        'reason': data.get('reason', 'Manual removal')
+                    })
+                    flag_removed = True
+                
+                updated_per_question.append(question)
+            else:
+                updated_per_question.append(question)
+        
+        if not flag_removed:
+            return jsonify({
+                'success': False,
+                'message': 'No flags were removed. Flags may have already been removed or do not exist.'
+            }), 400
+        
+        # Update the result in database
+        col_results.update_one(
+            {'_id': result['_id']},
+            {
+                '$set': {
+                    'perQuestion': updated_per_question,
+                    'updatedAt': datetime.utcnow()
+                }
+            }
+        )
+        
+        removed_count = len(removed_flags)
+        logger.info(f"Removed {removed_count} flag(s) from Q{question_number} for {exam_id}/{student_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully removed {removed_count} flag(s)',
+            'remaining_flags': remaining_flags,
+            'removed_flags': removed_flags
+        })
+    
+    except Exception as e:
+        logger.error(f"Error removing flag: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/api/pdf/<filename>')
 def serve_pdf(filename):
     """Serve uploaded PDF files."""

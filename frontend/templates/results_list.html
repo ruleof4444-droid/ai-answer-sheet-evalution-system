@@ -4,45 +4,72 @@
 
 {% block content %}
 <div class="results-list-container">
-    <h1>📊 Evaluation Results</h1>
-    <p class="description">View all completed evaluations</p>
+    <div class="page-header">
+        <div>
+            <h1>📊 Evaluation Results</h1>
+            <p class="description">View all completed evaluations or jump straight to a specific student.</p>
+        </div>
+    </div>
     
     {% if results %}
-        <div class="results-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Exam ID</th>
-                        <th>Student ID</th>
-                        <th>Score</th>
-                        <th>Percentage</th>
-                        <th>Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for result in results %}
+        <div class="results-card">
+            <div class="results-toolbar">
+                <div class="search-block">
+                    <label for="studentSearch">Search by Student ID</label>
+                    <div class="search-input">
+                        <input type="text" id="studentSearch" placeholder="e.g., S12345 or part of the ID">
+                        <button type="button" class="btn btn-secondary" onclick="filterResults()">Search</button>
+                    </div>
+                    <small>Use the search box to quickly locate a student's evaluation.</small>
+                </div>
+                <div class="results-meta">
+                    <div class="meta-badge">
+                        <span>Total Records</span>
+                        <strong id="totalResults">{{ results|length }}</strong>
+                    </div>
+                    <div class="meta-badge secondary">
+                        <span>Visible</span>
+                        <strong id="visibleResults">{{ results|length }}</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="results-table">
+                <table>
+                    <thead>
                         <tr>
-                            <td class="id-cell">{{ result.exam_id[:16] }}...</td>
-                            <td class="id-cell">{{ result.student_id[:16] }}...</td>
-                            <td class="score-cell">{{ result.overall.total_scored }}/{{ result.overall.total_max }}</td>
-                            <td>
-                                <div class="percentage-bar">
-                                    <div class="percentage-fill" style="width: {{ result.overall.percentage }}%">
-                                        {{ result.overall.percentage }}%
-                                    </div>
-                                </div>
-                            </td>
-                            <td>{{ result.generated_at }}</td>
-                            <td class="actions-cell">
-                                <a href="{{ url_for('results', exam_id=result.exam_id, student_id=result.student_id) }}" class="btn btn-sm">View</a>
-                                <a href="{{ url_for('pdf_viewer', exam_id=result.exam_id, student_id=result.student_id) }}" class="btn btn-sm">OCR</a>
-                                <button onclick="deleteScript('{{ result.exam_id }}', '{{ result.student_id }}')" class="btn btn-sm btn-delete" title="Delete this script and all associated data">Delete</button>
-                            </td>
+                            <th>Exam ID</th>
+                            <th>Student ID</th>
+                            <th>Score</th>
+                            <th>Percentage</th>
+                            <th>Date</th>
+                            <th>Actions</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        {% for result in results %}
+                            <tr data-student-id="{{ result.student_id|lower }}">
+                                <td class="id-cell"><code>{{ result.exam_id[:16] }}...</code></td>
+                                <td class="id-cell"><code>{{ result.student_id }}</code></td>
+                                <td class="score-cell">{{ result.overall.total_scored }}/{{ result.overall.total_max }}</td>
+                                <td>
+                                    <div class="percentage-bar">
+                                        <div class="percentage-fill" style="width: {{ result.overall.percentage }}%">
+                                            {{ result.overall.percentage }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-muted">{{ result.generated_at }}</td>
+                                <td class="actions-cell">
+                                    <a href="{{ url_for('results', exam_id=result.exam_id, student_id=result.student_id) }}" class="btn btn-sm btn-primary">View</a>
+                                    <a href="{{ url_for('pdf_viewer', exam_id=result.exam_id, student_id=result.student_id) }}" class="btn btn-sm btn-secondary">OCR</a>
+                                    <button onclick="deleteScript('{{ result.exam_id }}', '{{ result.student_id }}')" class="btn btn-sm btn-delete" title="Delete this script and all associated data">Delete</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     {% else %}
         <div class="alert alert-warning">
@@ -56,21 +83,105 @@
 
 <style>
     .results-list-container {
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
-        padding: 20px;
+    }
+    
+    .page-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: var(--spacing-sm);
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     .description {
-        color: #666;
-        margin-bottom: 20px;
+        color: var(--text-secondary);
+        font-size: 1.125rem;
+        margin-bottom: var(--spacing-2xl);
+    }
+    
+    .results-card {
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+    }
+    
+    .results-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--spacing-xl);
+        flex-wrap: wrap;
+        padding: var(--spacing-xl);
+        border-bottom: 1px solid var(--border-light);
+        background: var(--bg-secondary);
+    }
+    
+    .search-block {
+        flex: 1;
+        min-width: 280px;
+    }
+    
+    .search-block label {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-sm);
+        display: block;
+    }
+    
+    .search-input {
+        display: flex;
+        gap: var(--spacing-sm);
+    }
+    
+    .search-input input {
+        flex: 1;
+    }
+    
+    .search-block small {
+        display: block;
+        margin-top: var(--spacing-sm);
+        color: var(--text-tertiary);
+    }
+    
+    .results-meta {
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: stretch;
+        flex-wrap: wrap;
+    }
+    
+    .meta-badge {
+        background: var(--bg-primary);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md) var(--spacing-lg);
+        min-width: 140px;
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .meta-badge.secondary {
+        background: var(--bg-tertiary);
+    }
+    
+    .meta-badge span {
+        display: block;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-tertiary);
+        margin-bottom: var(--spacing-xs);
+    }
+    
+    .meta-badge strong {
+        font-size: 1.5rem;
+        color: var(--text-primary);
     }
     
     .results-table {
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         overflow-x: auto;
     }
     
@@ -79,31 +190,32 @@
         border-collapse: collapse;
     }
     
-    table thead {
-        background: #f5f5f5;
-        font-weight: 600;
-        border-bottom: 2px solid #ddd;
-    }
-    
     table th {
-        padding: 15px;
+        padding: var(--spacing-md);
         text-align: left;
-        color: #333;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     table td {
-        padding: 15px;
-        border-bottom: 1px solid #eee;
+        padding: var(--spacing-md);
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    table tbody tr {
+        transition: background var(--transition-fast);
     }
     
     table tbody tr:hover {
-        background: #f9f9f9;
+        background: var(--bg-secondary);
     }
     
     .id-cell {
-        font-family: monospace;
-        font-size: 0.9em;
-        color: #666;
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        color: var(--text-primary);
     }
     
     .score-cell {
@@ -112,22 +224,22 @@
     }
     
     .percentage-bar {
-        background: #eee;
-        height: 24px;
-        border-radius: 12px;
+        background: var(--bg-tertiary);
+        height: 28px;
+        border-radius: var(--radius-full);
         overflow: hidden;
-        min-width: 100px;
+        min-width: 120px;
     }
     
     .percentage-fill {
-        background: linear-gradient(90deg, #667eea, #764ba2);
+        background: var(--primary-gradient);
         height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 0.8em;
-        font-weight: bold;
+        font-size: 0.85rem;
+        font-weight: 600;
     }
     
     .actions-cell {
@@ -135,64 +247,76 @@
     }
     
     .btn-sm {
-        padding: 6px 12px;
-        font-size: 0.9em;
-        margin-right: 5px;
-        text-decoration: none;
-        display: inline-block;
-        border-radius: 4px;
-        transition: all 0.3s;
-        border: none;
-        cursor: pointer;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-    
-    .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-    }
-    
-    .btn-secondary:hover {
-        background: #e0e0e0;
-    }
-    
-    .btn-delete {
-        background: #ff6b6b;
-        color: white;
-    }
-    
-    .btn-delete:hover {
-        background: #ff5252;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.85rem;
+        margin-right: 0.35rem;
     }
     
     .alert {
         background: #fff3e0;
         color: #e65100;
-        padding: 20px;
-        border-radius: 8px;
+        padding: var(--spacing-xl);
+        border-radius: var(--radius-lg);
         border-left: 4px solid #ff9800;
+        box-shadow: var(--shadow-md);
     }
     
     .alert strong {
         display: block;
-        margin-bottom: 10px;
+        margin-bottom: var(--spacing-sm);
     }
     
     .alert p {
-        margin: 0 0 15px 0;
+        margin: 0 0 var(--spacing-md) 0;
+    }
+    
+    @media (max-width: 768px) {
+        .results-toolbar {
+            flex-direction: column;
+        }
+        
+        .results-meta {
+            width: 100%;
+        }
+        
+        .meta-badge {
+            flex: 1;
+            text-align: center;
+        }
     }
 </style>
 
 <script>
+const studentSearchInput = document.getElementById('studentSearch');
+const resultsTableBody = document.getElementById('resultsTableBody');
+const visibleResultsCount = document.getElementById('visibleResults');
+let filterTimeout;
+
+function filterResults() {
+    if (!resultsTableBody) return;
+    
+    const query = studentSearchInput.value.trim().toLowerCase();
+    let visibleCount = 0;
+    
+    resultsTableBody.querySelectorAll('tr').forEach(row => {
+        const studentId = row.getAttribute('data-student-id');
+        const matches = !query || (studentId && studentId.includes(query));
+        row.style.display = matches ? '' : 'none';
+        if (matches) visibleCount += 1;
+    });
+    
+    if (visibleResultsCount) {
+        visibleResultsCount.textContent = visibleCount;
+    }
+}
+
+if (studentSearchInput) {
+    studentSearchInput.addEventListener('input', () => {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(filterResults, 200);
+    });
+}
+
 async function deleteScript(examId, studentId) {
     // Confirm deletion
     const shortExamId = examId.length > 12 ? examId.substring(0, 12) + '...' : examId;

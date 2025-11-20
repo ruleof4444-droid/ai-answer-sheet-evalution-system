@@ -4,38 +4,54 @@
 
 {% block content %}
 <div class="evaluate-container">
-    <h1>⚖️ Evaluate Student Scripts</h1>
-    <p class="description">Run evaluation to score student answers based on the marking scheme.</p>
+    <div class="page-header">
+        <h1>⚖️ Evaluate Student Scripts</h1>
+        <p class="description">Run evaluation to score student answers based on the marking scheme.</p>
+    </div>
     
-    <div class="eval-form">
-        <div class="form-group">
-            <label for="exam_id">Exam ID:</label>
-            <input type="text" id="exam_id" placeholder="Enter exam ID from schema upload" required>
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Evaluation Form</h2>
         </div>
-        
-        <div class="form-group">
-            <label for="student_id">Student ID:</label>
-            <input type="text" id="student_id" placeholder="Enter student ID from script upload" required>
-        </div>
-        
-        <div class="form-actions">
-            <button onclick="loadPreview()" class="btn btn-secondary">Preview Data</button>
-            <button onclick="runEvaluation()" class="btn btn-primary">Run Evaluation</button>
+        <div class="card-body">
+            <form id="evaluateForm">
+                <div class="form-group">
+                    <label for="exam_id">Exam ID</label>
+                    <input type="text" id="exam_id" placeholder="Enter exam ID from schema upload" required>
+                    <small>Enter the exam ID that was generated when you uploaded the marking scheme</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="student_id">Student ID</label>
+                    <input type="text" id="student_id" placeholder="Enter student ID from script upload" required>
+                    <small>Enter the student ID that was used when uploading the answer script</small>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" onclick="loadPreview()" class="btn btn-secondary">🔍 Preview Data</button>
+                    <button type="button" onclick="runEvaluation()" class="btn btn-primary">⚖️ Run Evaluation</button>
+                </div>
+            </form>
         </div>
     </div>
     
     <div id="previewSection" class="preview-section" style="display:none;">
-        <h2>Preview Data</h2>
-        
-        <div class="preview-grid">
-            <div class="preview-card">
-                <h3>📚 Schema Information</h3>
-                <div id="schemaPreview" class="preview-content">Loading...</div>
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">🔍 Data Preview</h2>
             </div>
-            
-            <div class="preview-card">
-                <h3>📄 OCR Data</h3>
-                <div id="ocrPreview" class="preview-content">Loading...</div>
+            <div class="card-body">
+                <div class="preview-grid">
+                    <div class="preview-card">
+                        <h3>📚 Schema Information</h3>
+                        <div id="schemaPreview" class="preview-content">Loading...</div>
+                    </div>
+                    
+                    <div class="preview-card">
+                        <h3>📄 OCR Data</h3>
+                        <div id="ocrPreview" class="preview-content">Loading...</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -47,147 +63,99 @@
     .evaluate-container {
         max-width: 1000px;
         margin: 0 auto;
-        padding: 20px;
+    }
+    
+    .page-header {
+        margin-bottom: var(--spacing-2xl);
+    }
+    
+    .page-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: var(--spacing-sm);
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     .description {
-        color: #666;
-        margin-bottom: 30px;
-    }
-    
-    .eval-form {
-        background: white;
-        padding: 30px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        margin-bottom: 30px;
-    }
-    
-    .form-group {
-        margin-bottom: 20px;
-    }
-    
-    .form-group label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 500;
-        color: #333;
-    }
-    
-    .form-group input {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 1em;
-        box-sizing: border-box;
+        color: var(--text-secondary);
+        font-size: 1.125rem;
     }
     
     .form-actions {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 15px;
-    }
-    
-    .btn {
-        padding: 12px 20px;
-        border: none;
-        border-radius: 4px;
-        font-size: 1em;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-    
-    .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-    }
-    
-    .btn-secondary:hover {
-        background: #e0e0e0;
+        gap: var(--spacing-md);
+        margin-top: var(--spacing-xl);
     }
     
     .preview-section {
-        margin-bottom: 30px;
+        margin-top: var(--spacing-xl);
+    }
+    
+    .preview-section h2 {
+        margin-bottom: var(--spacing-lg);
+        color: var(--text-primary);
     }
     
     .preview-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--spacing-lg);
     }
     
     .preview-card {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background: var(--bg-primary);
+        padding: var(--spacing-xl);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-light);
     }
     
     .preview-card h3 {
         margin-top: 0;
-        color: #333;
+        margin-bottom: var(--spacing-md);
+        color: var(--text-primary);
+        font-size: 1.25rem;
     }
     
     .preview-content {
-        background: #f9f9f9;
-        padding: 15px;
-        border-radius: 4px;
-        max-height: 300px;
+        background: var(--bg-tertiary);
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-md);
+        max-height: 400px;
         overflow-y: auto;
-        font-size: 0.9em;
-        color: #555;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
         line-height: 1.6;
+        border: 1px solid var(--border-light);
+    }
+    
+    .preview-content ul {
+        margin: var(--spacing-md) 0;
+        padding-left: var(--spacing-lg);
+    }
+    
+    .preview-content li {
+        margin: var(--spacing-sm) 0;
     }
     
     #evaluationStatus {
-        margin-top: 20px;
-    }
-    
-    .alert {
-        padding: 15px;
-        border-radius: 4px;
-        margin-bottom: 10px;
-    }
-    
-    .alert-info {
-        background: #e3f2fd;
-        color: #1565c0;
-        border-left: 4px solid #1976d2;
-    }
-    
-    .alert-success {
-        background: #e8f5e9;
-        color: #2e7d32;
-        border-left: 4px solid #43a047;
-    }
-    
-    .alert-danger {
-        background: #ffebee;
-        color: #c62828;
-        border-left: 4px solid #ef5350;
-    }
-    
-    .alert-warning {
-        background: #fff3e0;
-        color: #e65100;
-        border-left: 4px solid #ff9800;
+        margin-top: var(--spacing-xl);
     }
     
     @media (max-width: 768px) {
-        .form-actions, .preview-grid {
+        .form-actions {
             grid-template-columns: 1fr;
+        }
+        
+        .preview-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .page-header h1 {
+            font-size: 2rem;
         }
     }
 </style>
